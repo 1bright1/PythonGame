@@ -1,0 +1,36 @@
+import socket
+
+# coding the client side of the network. In other words allowing client to connect to the server. Will we be testing and sending info to the server as well as receiving info from the server
+class Network:
+    def __init__(self):
+        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server = "192.168.2.14"
+        self.port = 5555
+        self.addr = (self.server, self.port)
+        #self.id = self.connect() # sending an ID (a string) to our clients to know if they are player 1 or 2 or just of they are connected
+        #print(self.id)
+        self.pos = self.connect() #when we first connect to our server, the server should return to each of our clients the starting position (pos) of their player cuz starting position depends if they are player one or two
+
+    def getpos(self):
+        return self.pos
+
+    def connect(self):
+        try:
+            self.client.connect(self.addr) # client to connect to server so that client can recieve info from the server. Once connected we will return that string "Connected" in server.py line 21 which is done below
+            return self.client.recv(2048).decode() # when a client connect we should send some validation, string, or like ID back to our clients. so we would need to decode it so its readable for our client
+        except:
+            pass
+
+    def send(self, data):
+        try:
+            self.client.send(str.encode(data)) # client to send info to the server so we encode the data for the server to read/recv
+            return self.client.recv(2048).decode() # reply from that server after it recievd info from client. Decode so our client will be able to read reply from server
+        except socket.error as e:
+            print(e)
+
+#we dont need these below anymore. it was just for testing
+# n = Network()
+# print(n.send("hello"))
+# print(n.send("working"))
+
+#note when you want to run this you must run server.py first.

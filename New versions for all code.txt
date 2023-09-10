@@ -1,0 +1,177 @@
+###SERVER.PY##########
+import socket #using socket and threading to handle connections to our server
+from _thread import* #we are going to set up a socket to allow for connections to come in into our server on a certain port
+from Player import Player
+import pickle
+
+
+
+server = "192.168.2.14" #create a server which is in strings. So we will be inputing an ip address in that string. We will be using our IP4v addr as our sever addr which can be find in your command promt
+port = 5555 #choose a port in this case port number 5555 was chosen
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # these are just the types of connection. We are going to be connecting to a an IPv4 address.
+# so for the parameters socket.AF_INET is just the type for IPv4 connection and socket.SOCK_STREAM represent how the server string comes in
+
+# bind our server and port to the socket
+try:
+    s.bind((server, port))
+except socket.error as e:
+    str(e)
+
+s.listen(2)# opens up the port so we can have multiple clients connecting to server. the listen() takes one arguement and its optional. If left blank then unlimited number of clients can connect. For now we want only two people to connect
+print("waiting for connection, server started")
+
+
+
+players = [Player(0,0,50,50,(255,0,0)), Player(100,100,50,50,(0,0,255))] # this list will hold the positions of our players. so player 1 will start at (0,0) and player 2 will start at (100,100). remember Player() is a class. this list creats players
+
+
+def threaded_client(conn, player): #thread is another process starting in the background like proccess 2 while process 1 is still running. We won't have to wait for process 1 to be done. Meaning we don't have to wait for a connection to finish executing before starting another connection
+    conn.send(pickle.dumps(players[player])) #sending it to server
+    reply = ""
+    while True:
+        try:
+            data = pickle.loads(conn.recv(2048)) #2048 is the amount of bits (amount of info you are trying to recieve). basically you want to recieve some kind of data from our connection. The larger the size of bits the longer it takes to recieve the info.
+            players[player] = data
+            #reply = data.decode("utf-8") # to decode the info we recieve into strings humans can read and understand
+            if not data: # if we not getting any info from client then disconnect and break
+                print("Disconnected")
+                break
+            else: # Send updated player position to the other client
+                if player == 1:
+                    reply = players[0]  # Serialize the player object
+                else:
+                    reply = players[1]  # Serialize the player object
+                print("recieved: ", data)
+                print("sending : ", reply)
+
+            conn.sendall(pickle.dumps(reply))  # Serialize and send position data to client
+        except:
+            break
+    print("Lost connection")
+    conn.close()
+
+currentPlayer = 0 #
+while True: #this loop will continously look for connections. this loop will start a process like process 1
+    conn, addr = s.accept() # accept any incoming connection using accept(). note conn is an object representing whats connecting and addr is the adress which is an IP address
+    print("connected to:", addr)
+
+    start_new_thread(threaded_client, (conn, currentPlayer))
+    currentPlayer += 1
+
+####NETWORK.PY######
+import socket
+import  pickle #allows you to serialize objects into 0's and 1's and send it over the nect work, decompose and turn it back into an object
+# coding the client side of the network. In other words allowing client to connect to the server. Will we be testing and sending info to the server as well as receiving info from the server
+class Network:
+    def __init__(self):
+        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server = "192.168.2.14"
+        self.port = 5555
+        self.addr = (self.server, self.port)
+        #self.id = self.connect() # sending an ID (a string) to our clients to know if they are player 1 or 2 or just of they are connected
+        #print(self.id)
+        self.play = self.connect() #when we first connect to our server, the server should return to each of our clients the starting position (pos) of their player cuz starting position depends if they are player one or two
+
+    def getPlay(self):
+        return self.play
+
+    def connect(self):
+        try:
+            self.client.connect(self.addr) # client to connect to server so that client can recieve info from the server. Once connected we will return that string "Connected" in server.py line 21 which is done below
+            return pickle.loads(self.client.recv(2048)) # pickle.loads is to load byte data and the size is 2048 bits
+        except:
+            pass
+
+    def send(self, data):
+        try:
+            self.client.send(pickle.dumps(data))  # Send position data to the server
+            return pickle.loads(self.client.recv(2048))  # Receive and deserialize server response
+        except socket.error as e:
+            print(e)
+
+#######CLIENT.PY##########
+import pygame
+from Network import Network
+from Player import Player
+import pickle
+
+#creating a window
+window_width = 500
+window_height = 500
+window = pygame.display.set_mode((window_width, window_height))
+pygame.display.set_caption("Client")
+
+def redrawWindow(window, player, player2): # redraw window and player
+    window.fill((255,255,255))
+    player.draw(window)
+    player2.draw(window)
+    pygame.display.update()
+
+
+def main(): # main loop for pygame to run continuiosuly checking for event asking the server for info
+    run = True
+    n = Network() #connecting to the server
+    play = n.getPlay()
+    clock = pygame.time.Clock()  # use for the speed of player
+
+    while run:
+        clock.tick(60) #speed is at 60fps
+        play2 = n.send(play)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+                pygame.quit()
+
+        play.move()
+        redrawWindow(window, play, play2)
+
+main()
+
+#######PLAYER.PY##########
+import pygame
+
+class Player(): # class for game character/player
+    def __init__(self, x, y, width, height, color): #x and y are the positions of player
+        self.x = x #initializing variables. Think of it like this.x = x. remember the "this function" used in java. self is an object/player for this function
+        self.y = y
+        self.width = width
+        self.height = height
+        self.color = color
+        self.val = 3 # self.val is the unit space a player can move in any direction
+        self.rect = (x,y,width,height)
+
+    def draw(self, window): #draw the shape of the character. in this case it will be rectangle hence rect function
+        pygame.draw.rect(window,self.color,self.rect)
+
+    def move(self): # move player
+        keys = pygame.key.get_pressed()  # checks if certain keys (on the keyboard) are pressed then change the x and y values
+
+        if keys[pygame.K_LEFT]: #yooooo if you do pygame.K... you will see the different keys on a keyboard incase one is pressed
+            self.x -= self.val
+
+        if keys[pygame.K_RIGHT]:
+            self.x += self.val
+
+        if keys[pygame.K_UP]:
+            self.y  -= self.val # the operation= those are just the standard for moving up,down,right,left
+
+        if keys[pygame.K_DOWN]:
+            self.y += self.val
+
+        self.update()
+
+    def update(self):
+        self.rect = (self.x,self.y,self.width,self.height)
+        # Add boundary checks to prevent the player from going off-screen
+        window_width = 500
+        window_height = 500
+        if self.x < 0:
+            self.x = 0
+        elif self.x > window_width - self.width:
+            self.x = window_width - self.width
+        if self.y < 0:
+            self.y = 0
+        elif self.y > window_height - self.height:
+            self.y = window_height - self.height

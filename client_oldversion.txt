@@ -1,0 +1,82 @@
+import pygame
+from Network import Network
+#creating a window
+width = 500
+height = 500
+window = pygame.display.set_mode((width, height))
+pygame.display.set_caption("Client")
+
+clientnum = 0
+
+class Player(): # class for game character/player
+    def __init__(self, x, y, width, height, color): #x and y are the positions of player
+        self.x = x #initializing variables. Think of it like this.x = x. remember the "this function" used in java. self is an object/player for this function
+        self.y = y
+        self.width = width
+        self.height = height
+        self.color = color
+        self.rect = (x,y,width,height)
+        self.val = 3 # self.val is the unit space a player can move in any direction
+
+    def draw(self, window): #draw the shape of the character. in this case it will be rectangle hence rect function
+        pygame.draw.rect(window,self.color,self.rect)
+
+    def move(self): # move player
+        keys = pygame.key.get_pressed()  # checks if certain keys (on the keyboard) are pressed then change the x and y values
+
+        if keys[pygame.K_LEFT]: #yooooo if you do pygame.K... you will see the different keys on a keyboard incase one is pressed
+            self.x -= self.val
+
+        if keys[pygame.K_RIGHT]:
+            self.x += self.val
+
+        if keys[pygame.K_UP]:
+            self.y  -= self.val # the operation= those are just the standard for moving up,down,right,left
+
+        if keys[pygame.K_DOWN]:
+            self.y += self.val
+
+        self.update()
+
+    def update(self):
+        self.rect = (self.x,self.y,self.width,self.height)
+
+def read_pos(str): #converts the starting coordinates of a player to actual integers for x and y
+    str = str.split(",") # we are going to get a position cord like "4,3" in strings and we spliting the strings which puts the string numbers into an array called str as we have defined it, and coverting the string numbers to integers
+    return int(str[0]), int(str[1])
+
+def make_pos(cord): # now the integers are stored in an array called cord and we converting the coordinates back to strings
+    return str(cord[0]) + "," + str(cord[1])
+
+
+def redrawWindow(window, player, player2): # redraw window and player
+    window.fill((255,255,255))
+    player.draw(window)
+    player2.draw(window)
+    pygame.display.update()
+
+
+def main(): # main loop for pygame to run continuiosuly checking for event asking the server for info
+    run = True
+    n = Network() #connecting to the server
+    startpos = read_pos(n.getpos()) # get the starting position of clients chracter/player
+    play = Player(startpos[0],startpos[1],100,100,(0,255,0)) # parameters (x,y,width,height,color) the code for goes like (red,green,blue). This for player 1
+    play2 = Player(0,0,100,100,(255,0,0)) #for player 2 will be red
+    clock = pygame.time.Clock() #use for the speed of player
+
+    while run:
+        clock.tick(60) #speed is at 60fps
+
+        play2pos = read_pos(n.send(make_pos((play.x, play.y)))) #so basically once player 1 moves we send the movement to the server so player 2 knows where player 1 moved to and vice versa. note we use read_pos so the x and y position are in integers
+        play2.x = play2pos[0] #updating player's 2 position
+        play2.y = play2pos[1]
+        play2.update()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+                pygame.quit()
+        play.move()
+        redrawWindow(window, play, play2)
+
+main()

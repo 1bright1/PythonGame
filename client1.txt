@@ -1,0 +1,63 @@
+import pygame
+
+#creating a window
+width = 500
+height = 500
+window = pygame.display.set_mode((width, height))
+pygame.display.set_caption("Client")
+
+clientnum = 0
+
+class Player(): # class for game character/player
+    def __init__(self, x, y, width, height, color): #x and y are the positions of player
+        self.x = x #initializing variables. Think of it like this.x = x. remember the "this function" used in java. self is an object/player for this function
+        self.y = y
+        self.width = width
+        self.height = height
+        self.color = color
+        self.rect = (x,y,width,height)
+        self.val = 3 # self.val is the unit space a player can move in any direction
+
+    def draw(self, window): #draw the shape of the character. in this case it will be rectangle hence rect function
+        pygame.draw.rect(window,self.color,self.rect)
+
+    def move(self): # move player
+        keys = pygame.key.get_pressed()  # checks if certain keys (on the keyboard) are pressed then change the x and y values
+
+        if keys[pygame.K_LEFT]: #yooooo if you do pygame.K... you will see the different keys on a keyboard incase one is pressed
+            self.x -= self.val
+
+        if keys[pygame.K_RIGHT]:
+            self.x += self.val
+
+        if keys[pygame.K_UP]:
+            self.y  -= self.val # the operation= those are just the standard for moving up,down,right,left
+
+        if keys[pygame.K_DOWN]:
+            self.y += self.val
+
+        self.rect = (self.x,self.y,self.width,self.height)
+
+
+
+
+def redrawWindow(window, player): # redraw window and player
+    window.fill((255,255,255))
+    player.draw(window)
+    pygame.display.update()
+
+
+def main(): # main loop for pygame to run continuiosuly checking for event asking the server for info
+    run = True
+    play = Player(50,50,100,100,(0,255,0)) # parameters (x,y,width,height,color) the code for goes like (red,green,blue)
+    clock = pygame.time.Clock() #use for the speed of player
+    while run:
+        clock.tick(60) #speed is at 60fps
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+                pygame.quit()
+        play.move()
+        redrawWindow(window, play)
+
+main()
